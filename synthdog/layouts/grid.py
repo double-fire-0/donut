@@ -14,7 +14,7 @@ class Grid:
         self.fill = config.get("fill", [0, 1])
         self.full = config.get("full", 0)
         self.align = config.get("align", ["left", "right", "center"])
-
+        
     def generate(self, bbox):
         left, top, width, height = bbox
 

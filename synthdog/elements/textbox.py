@@ -19,7 +19,6 @@ class TextBox:
         width = np.clip(width * fill, height, width)
         font = {**font, "size": int(height)}
         left, top = 0, 0
-
         for char in text:
             if char in "\r\n":
                 continue

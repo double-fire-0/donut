@@ -53,13 +53,30 @@ class SynthDoG(templates.Template):
         bg_layer = self.background.generate(size)
         paper_layer, text_layers, texts = self.document.generate(size)
 
+        box_list_2 = [text_layer.bbox.tolist() for text_layer in text_layers]
+
+        out_texts = texts
+        
+        
+        #print(document_group.bbox)
+
+
         document_group = layers.Group([*text_layers, paper_layer])
+
+        #print(len(text_layers))
+        #print(document_group.bbox)
+
         document_space = np.clip(size - document_group.size, 0, None)
         document_group.left = np.random.randint(document_space[0] + 1)
         document_group.top = np.random.randint(document_space[1] + 1)
+
+        #box_list = document_group.bbox.tolist()
+
         roi = np.array(paper_layer.quad, dtype=int)
 
         layer = layers.Group([*document_group.layers, bg_layer]).merge()
+
+
         self.effect.apply([layer])
 
         image = layer.output(bbox=[0, 0, *size])
@@ -67,12 +84,22 @@ class SynthDoG(templates.Template):
         label = label.strip()
         label = re.sub(r"\s+", " ", label)
         quality = np.random.randint(self.quality[0], self.quality[1] + 1)
+        
+        # from ipdb import set_trace
+        # set_trace()
+        box_list = [text_layer.bbox.tolist() for text_layer in text_layers]
+        quad_list = [text_layer.quad.tolist() for text_layer in text_layers]
+
+        # print(f'{box_list_2[0]} --- {box_list[0]}')
 
         data = {
             "image": image,
             "label": label,
             "quality": quality,
             "roi": roi,
+            "texts": out_texts,
+            "box_list":box_list,
+            "quad_list":quad_list
         }
 
         return data
@@ -82,10 +109,15 @@ class SynthDoG(templates.Template):
             os.makedirs(root, exist_ok=True)
 
     def save(self, root, data, idx):
+        # from ipdb import set_trace
+        # set_trace()
+        box_list = data['box_list']
+        text_list = data['texts']
         image = data["image"]
         label = data["label"]
         quality = data["quality"]
-        roi = data["roi"]
+        roi = data["roi"].tolist()
+        quad_list = data["quad_list"]
 
         # split
         split_idx = self.split_indexes[idx % len(self.split_indexes)]
@@ -103,7 +135,8 @@ class SynthDoG(templates.Template):
         metadata_filepath = os.path.join(output_dirpath, metadata_filename)
         os.makedirs(os.path.dirname(metadata_filepath), exist_ok=True)
 
-        metadata = self.format_metadata(image_filename=image_filename, keys=["text_sequence"], values=[label])
+        metadata = self.format_metadata(image_filename=image_filename, keys=["text_sequence","box_list","text_list", "roi", "quad_list"], values=[label,box_list,text_list,roi,quad_list])
+        # metadata = self.format_metadata(image_filename=image_filename, keys=["text_sequence","box_list","text_list", "roi"], values=[label,box_list,text_list,roi])
         with open(metadata_filepath, "a") as fp:
             json.dump(metadata, fp, ensure_ascii=False)
             fp.write("\n")

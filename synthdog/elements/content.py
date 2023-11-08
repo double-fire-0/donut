@@ -10,10 +10,12 @@ from synthtiger import components
 
 from elements.textbox import TextBox
 from layouts import GridStack
+from elements.eda import eda
+from elements.eda_en import eda_en
 
 
 class TextReader:
-    def __init__(self, path, cache_size=2 ** 28, block_size=2 ** 20):
+    def __init__(self, path, eda_prob=0, eda_type='en', cache_size=2 ** 28, block_size=2 ** 10):
         self.fp = open(path, "r", encoding="utf-8")
         self.length = 0
         self.offsets = [0]
@@ -22,6 +24,8 @@ class TextReader:
         self.block_size = block_size
         self.bucket_size = cache_size // block_size
         self.idx = 0
+        self.eda_prob = eda_prob
+        self.eda_type = eda_type
 
         while True:
             text = self.fp.read(self.block_size)
@@ -62,6 +66,20 @@ class TextReader:
             offset = self.offsets[key]
             self.fp.seek(offset, 0)
             text = self.fp.read(self.block_size)
+            original_len = len(text)
+            if self.eda_prob > 0 and np.random.rand() < self.eda_prob:
+                if self.eda_type == 'en':
+                    text = eda_en(text)[0]
+                elif self.eda_type == 'zh':
+                    text = eda(text)[0]
+                else:
+                    raise NotImplementedError
+                if len(text) >= original_len:
+                    text = text[:original_len]
+                else:
+                    text = text + text[:original_len - len(text)]
+                if len(text) != original_len:
+                    raise ValueError(f"length mismatch: {len(text)} != {original_len} \n {text[0]} \n {text[1]}")
             self.cache[key] = text
 
         self.cache.move_to_end(key)
